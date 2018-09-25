@@ -8,7 +8,7 @@ Instructions:
  - Edit the var file, where topology is actually defined: 
    * vmx_download_url and vmx_image_name variables location getting a fresh vmx image (qcow2 format)
    * topology.network for networking definition: vni and names
-   * instances for VMX: vmx properties (such as interface connectivity) and flavor (defined in this file too)
+   * topology.instances for VMX: vmx properties (such as interface connectivity) and flavor (defined in this file too)
    
  On a git installer host: 
  - "git clone https://github.com/robric/ha-cluster-with-mx"
