@@ -1,0 +1,196 @@
+global_configuration:
+  CONTAINER_REGISTRY: ci-repo.englab.juniper.net:5010
+  REGISTRY_PRIVATE_INSECURE: True
+provider_config:
+  kvm:
+    image: CentOS-7-x86_64-GenericCloud-1805.qcow2 
+    image_url: http://10.84.5.120/cs-customer/images
+    ssh_pwd: c0ntrail123
+    ssh_user: root
+    ssh_public_key:
+    ssh_private_key:
+    vcpu: 8
+    vram: 65536
+    vdisk: 170G
+    subnet_prefix: 192.168.222.0
+    subnet_netmask: 255.255.255.0
+    gateway: 192.168.222.1
+    nameserver: 192.168.222.1
+    ntpserver: 10.84.5.100  
+    domainsuffix: sdn.lab
+instances:
+  all-in-one-1:
+    provider: kvm
+    host: 10.87.65.29
+    bridge: br-management
+    ip: 192.168.222.151
+    additional_interfaces:
+      - bridge: br-lan-dc
+        ip: 192.168.100.151
+        mask: 255.255.255.0
+    roles:
+      config_database:
+      config:
+      control:
+      analytics_database:
+      analytics:
+      webui:
+      openstack:
+      vrouter:
+      openstack_compute:
+  all-in-one-2:
+    provider: kvm
+    host: 10.87.65.29
+    bridge: br-management
+    ip: 192.168.222.152
+    additional_interfaces:
+      - bridge: br-lan-dc
+        ip: 192.168.100.152
+        mask: 255.255.255.0
+    roles:
+      config_database:
+      config:
+      control:
+      analytics_database:
+      analytics:
+      webui:
+      openstack:
+      vrouter:
+      openstack_compute:
+  all-in-one-3:
+    provider: kvm
+    host: 10.87.65.29
+    bridge: br-management
+    ip: 192.168.222.153
+    additional_interfaces:
+      - bridge: br-lan-dc
+        ip: 192.168.100.153
+        mask: 255.255.255.0
+    roles:
+      config_database:
+      config:
+      control:
+      analytics_database:
+      analytics:
+      webui:
+      openstack:
+      vrouter:
+      openstack_compute:
+  compute-4v-1:
+    vcpu: 4
+    vram: 32768
+    vdisk: 50G
+    provider: kvm
+    host: 10.87.65.29
+    bridge: br-management
+    ip: 192.168.222.161
+    additional_interfaces:
+      - bridge: br-lan-dc
+        ip: 192.168.100.161
+        mask: 255.255.255.0
+    roles:
+      vrouter:
+      openstack_compute:
+  compute-4v-2:
+    vcpu: 4
+    vram: 32768
+    vdisk: 50G
+    provider: kvm
+    host: 10.87.65.29
+    bridge: br-management
+    ip: 192.168.222.162
+    additional_interfaces:
+      - bridge: br-lan-dc
+        ip: 192.168.100.162
+        mask: 255.255.255.0
+    roles:
+      vrouter:
+      openstack_compute:
+  compute-6v-3:
+    vcpu: 6
+    vram: 49152
+    vdisk: 70G
+    provider: kvm
+    host: 10.87.65.28
+    bridge: br-management
+    ip: 192.168.222.163
+    additional_interfaces:
+      - bridge: br-lan-dc
+        ip: 192.168.100.163
+        mask: 255.255.255.0
+    roles:
+      vrouter:
+      openstack_compute:
+  compute-6v-4:
+    vcpu: 6
+    vram: 49152
+    vdisk: 70G
+    provider: kvm
+    host: 10.87.65.28
+    bridge: br-management
+    ip: 192.168.222.164
+    additional_interfaces:
+      - bridge: br-lan-dc
+        ip: 192.168.100.164
+        mask: 255.255.255.0
+    roles:
+      vrouter:
+      openstack_compute:
+  compute-6v-5:
+    vcpu: 6
+    vram: 49152
+    vdisk: 70G
+    provider: kvm
+    host: 10.87.65.28
+    bridge: br-management
+    ip: 192.168.222.165
+    additional_interfaces:
+      - bridge: br-lan-dc
+        ip: 192.168.100.165
+        mask: 255.255.255.0
+    roles:
+      vrouter:
+      openstack_compute:
+  compute-2v-6:
+    vcpu: 2
+    vram: 16384
+    vdisk: 20G
+    provider: kvm
+    host: 10.87.65.29
+    bridge: br-management
+    ip: 192.168.222.166
+    additional_interfaces:
+      - bridge: br-lan-dc
+        ip: 192.168.100.166
+        mask: 255.255.255.0
+    roles:
+      vrouter:
+      openstack_compute:
+contrail_configuration:
+  CONFIG_DTABASE_NODEMGR__DEFAULTS__minimum_diskGB: "2"
+  DATABASE_NODEMGR__DEFAULTS__minimum_diskGB: "2"
+  OPENSTACK_VERSION: queens
+  CONFIG_NODES: 192.168.100.151,192.168.100.152,192.168.100.153
+  WEBUI_NODES: 192.168.100.151,192.168.100.152,192.168.100.153
+  CONTROLLER_NODES: 192.168.100.151,192.168.100.152,192.168.100.153
+  CONTROL_NODES: 192.168.100.151,192.168.100.152,192.168.100.153
+#  AAA_MODE: cloud-admin
+  UPGRADE_KERNEL: true
+  CLOUD_ORCHESTRATOR: openstack
+  VROUTER_GATEWAY: 192.168.100.1
+#  SSL_ENABLE: false
+  BGP_ASN: 64512
+  ENCAP_PRIORITY: "MPLSoUDP,MPLSoGRE,VXLAN"
+  RABBITMQ_NODE_PORT: 5673
+  PHYSICAL_INTERFACE: eth1
+  AUTH_MODE: keystone
+  LOG_LEVEL: SYS_DEBUG
+kolla_config:
+  kolla_globals:
+    kolla_internal_vip_address: 192.168.100.100
+    contrail_api_interface_address: 192.168.100.100
+    enable_ironic: no
+    enable_swift: no
+  kolla_passwords:
+    metadata_secret: c0ntrail123
+    keystone_admin_password: c0ntrail123

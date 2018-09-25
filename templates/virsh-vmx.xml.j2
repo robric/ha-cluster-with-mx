@@ -1,0 +1,75 @@
+<domain type="kvm">
+  <name>{{ item.name }}</name>
+  <memory>{{ topology.flavors[item.flavor].ram * 1048576 }}</memory>
+  <vcpu>{{ topology.flavors[item.flavor].vcpus }}</vcpu>
+  <os>
+    <type arch="x86_64">hvm</type>
+    <boot dev="hd"/>
+  </os>
+  <features>
+    <acpi/>
+    <apic/>
+  </features>
+  <cpu mode="custom" match="exact">
+    <model>SandyBridge</model>
+    <feature policy="force" name="erms"/>
+    <feature policy="force" name="smep"/>
+    <feature policy="force" name="fsgsbase"/>
+    <feature policy="force" name="pdpe1gb"/>
+    <feature policy="force" name="rdrand"/>
+    <feature policy="force" name="f16c"/>
+    <feature policy="force" name="osxsave"/>
+    <feature policy="force" name="dca"/>
+    <feature policy="force" name="pcid"/>
+    <feature policy="force" name="pdcm"/>
+    <feature policy="force" name="xtpr"/>
+    <feature policy="force" name="tm2"/>
+    <feature policy="force" name="est"/>
+    <feature policy="force" name="smx"/>
+    <feature policy="force" name="vmx"/>
+    <feature policy="force" name="ds_cpl"/>
+    <feature policy="force" name="monitor"/>
+    <feature policy="force" name="dtes64"/>
+    <feature policy="force" name="pbe"/>
+    <feature policy="force" name="tm"/>
+    <feature policy="force" name="ht"/>
+    <feature policy="force" name="ss"/>
+    <feature policy="force" name="acpi"/>
+    <feature policy="force" name="ds"/>
+    <feature policy="force" name="vme"/>
+  </cpu>
+  <clock offset="utc">
+    <timer name="rtc" tickpolicy="catchup"/>
+    <timer name="pit" tickpolicy="delay"/>
+    <timer name="hpet" present="no"/>
+  </clock>
+  <pm>
+    <suspend-to-mem enabled="no"/>
+    <suspend-to-disk enabled="no"/>
+  </pm>
+  <devices>
+    <emulator>/usr/libexec/qemu-kvm</emulator>
+    <disk type="file" device="disk">
+      <driver name="qemu" type="qcow2"/>
+      <source file="/var/lib/libvirt/images/{{ item.name }}-{{ vmx_image_name }}"/>
+      <target dev="hda" bus="ide"/>
+    </disk>
+    <interface type="network">
+      <source network="br-{{item.interfaces.management}}"/>
+      <model type="virtio"/>
+      <mac address='00:00:FF:AA:AA:{{ "%02d"|format(item.vm_id)}}'/>
+      <target dev='vm-{{ "%02d"|format(item.vm_id)}}-mgt'/>
+    </interface>
+{% for index,net in item.interfaces.user.items() %}
+    <interface type="network">
+      <source network="br-{{ net }}" />
+      <model type="virtio"/>
+      <target dev='vm-{{ "%02d"|format(item.vm_id)}}-eth-{{ "%02d"|format(index)}}'/>
+    </interface>
+{% endfor %}
+    <serial type="tcp">
+      <source mode="bind" host="0.0.0.0" service="40{{ "%02d"|format(item.vm_id) }}"/>
+      <protocol type="telnet"/>
+    </serial>
+  </devices>
+</domain>

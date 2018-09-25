@@ -1,0 +1,29 @@
+---
+
+# Install packages + common 
+
+- hosts: kvm_hosts
+  roles:
+     - create_facts
+     - server_install
+
+# Define VXLAN overlay topology between hosts (Hub and Spoke)
+
+- hosts: hub_vxlan
+  roles:
+     - hub_vxlan
+
+- hosts: spoke_vxlan
+  roles:
+     - spoke_vxlan
+
+# Install VMs
+
+- hosts: kvm_hosts
+  roles:
+     - define_vms
+     - vmx_config
+
+- hosts: hub_vxlan
+  roles:
+     - install_via_hub

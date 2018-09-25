@@ -1,0 +1,216 @@
+---
+# tasks file for define_vms
+
+
+
+
+#
+#      Restart network manager to trigger network scripts
+#
+
+- name: remove interfaces from Network Manager
+  lineinfile:
+    path: "/etc/sysconfig/network-scripts/ifcfg-{{ item }}"
+    regexp: "NM_CONTROLLED=no"
+    line: "NM_CONTROLLED=no"
+  with_items: "{{ ansible_interfaces }}"
+  ignore_errors: yes
+
+- name: Disable Network Manager
+  service:
+    name: NetworkManager
+    state: stopped
+    enabled: no
+  ignore_errors: yes
+  
+- name: Restart Network Services
+  systemd:
+    state: restarted
+    name: network
+    enabled: True
+  async: 1
+  poll: 0
+  ignore_errors: yes
+
+- name: wait for server to come back online
+  wait_for_connection:
+    delay: 30
+    timeout: 300
+    
+#
+#      Define libvirt networks
+#
+
+
+- name: Define libvirt networks for non management
+  virt_net:
+    command: define
+    name: br-{{ item.name }}
+    xml: '{{ lookup("template", "templates/libvirt-bridge.xml.j2") }}'
+  with_items: "{{ topology.networks }}"
+#  when: '"manage" not in item.name'
+
+- name: Start libvirt networks
+  virt_net: 
+    command: create
+    name: br-{{ item.name }}
+    state: active
+  with_items: "{{ topology.networks }}"
+
+- name: Apply auto-start to libvirt networks
+  virt_net: 
+    autostart: yes
+    name: br-{{ item.name }}
+  with_items: "{{ topology.networks }}"
+  
+
+#
+#   Defining veth to connect OVS and virsh NAT linux bridge 
+#
+#     ip link add dev vethb1 type veth peer name vethb2   
+#     brctl addif br-nat-mngt vethb1
+#     ovs-vsctl add-port br-management  vethb2
+#     ip link set up dev vethb2
+#     ip link set up dev vethb1
+#     
+#
+#       FIXME so far quick and dirty hack to attach NAT/DHCP to OVS bridges
+#
+#
+#- name: Linking Linux Bridge (NAT function) and OVS Bridge for management
+#  shell: "ovs-vsctl add-port br-management br-nat-mngt"
+#  register: ovs_out
+#
+#- debug: 
+#    msg: "ovs-vsctl output: {{ovs_out.stdout}}"
+#
+
+#       Update default libvirt network with static DHCP entries for management to 
+#       get predictable management IP (192.168.222.VM_ID)
+#
+#
+#       FIXME virt_net is not working so far - shell call used instead -
+##
+#- name: Configure DHCP entries for management
+#  virt_net: 
+#    command: modify
+#    name: default
+#    state: active
+#    xml: '{{ lookup("template", "templates/default-dhcp-bind.xml.j2") }}'
+#
+#  Or try around this one
+#
+#    - name: Configure DHCP entries for management
+#      virt_net: 
+#        command: modify
+#        name: default
+#        state: active
+#        xml: "{{ item }}"
+#      with_items: "{{ dhcp_bind_list }}"
+#      
+#
+#
+#      So far shell call is implemented with the following:
+#     
+#      - Ignore "failed" in case of second pass of ansible script (host already defined)
+#      
+#      If VM_Id is changed and entries are already defined:
+#        - edit default libvirt properties virsh net-edit default
+#        - remove all host entries <host mac== blabla>
+#        - save (ESC-wq)
+#        - virsh net-destroy default / virsh net-restart default (VM not runnning)
+#
+#
+#
+
+
+- name: Create Host DHCP bindings with 
+  set_fact:
+    dhcp_bind_list: '{{ lookup("template", "templates/default-dhcp-bind.xml.j2")[:-1].split(",")}}'
+- debug: var=dhcp_bind_list
+
+- name: DHCP customization of default libvirt network
+  shell: "virsh net-update br-nat-mngt add ip-dhcp-host '{{ item }}' --live --config"
+  with_items: "{{ dhcp_bind_list }}"
+  register: virsh_net
+  failed_when: "'existing dhcp host' not in virsh_net.stderr and virsh_net.rc==1 "
+  when: inventory_hostname in groups['hub_vxlan']
+#
+#       Spawn VMX instances on host_id based on virsh-vmx.xml.j2 template
+#
+
+- name: Ansible prepare VMX disks based on local VMX copy
+  copy:
+    src: /tmp/{{ vmx_image_name }}
+    dest: /var/lib/libvirt/images/{{ item.name }}-{{ vmx_image_name }}
+    remote_src: yes
+    force: no
+  with_items: "{{ vmx_list }}"
+
+
+- name: Define VMX instance
+  virt:
+      name: "{{ item.name }}"
+      command: define
+      xml: "{{ lookup('template', 'templates/virsh-vmx.xml.j2') }}"
+  with_items: "{{ topology.instances }}"
+  when: '"vmx" in item.flavor and item.host_id== id'
+
+- name: Start VMX instances
+  virt:
+      name: "{{ item.name }}"
+      command: start
+      autostart: yes
+  with_items: "{{ vmx_list }}"
+  when: 'item.host_id== id'
+
+- name: Reboot to fix network issues
+  shell: "sleep 5 && reboot"
+  async: 1
+  poll: 0
+  ignore_errors: yes
+  
+- name: wait for server to come back online
+  wait_for_connection:
+    delay: 30
+    timeout: 480
+  
+    
+#
+#       Spawn Linux instances
+#
+#
+#- name: Ansible prepare Linux disks based on local Linux copy
+#  copy:
+#    src: /tmp/{{ os_image_name }}
+#    dest: /var/lib/libvirt/images/{{ item.name }}-{{ os_image_name }}
+#    remote_src: yes
+#    force: no
+#  with_items: "{{ topology.instances }}"
+#  when: '"os" in item.flavor and item.host_id== id'
+#
+#- name: Define Linux Images
+#  virt:
+#      name: "{{ item.name }}"
+#      command: define
+#      xml: "{{ lookup('template', 'templates/virsh-linux.xml.j2') }}"
+#  with_items: "{{ topology.instances }}"
+#  when: '"os" in item.flavor and item.host_id== id'
+#
+#- name: Start Linux Instances
+#  virt:
+#      name: "{{ item.name }}"
+#      state: running
+#      autostart: yes
+#  with_items: "{{ topology.instances }}"
+#  when: '"os" in item.flavor and item.host_id== id'
+#
+- name: Creating Readme file with topology information (topology-readme.txt)
+  template:
+    src: 'templates/topology-recap.j2'
+    dest: './topology-readme.txt'
+
+- name: "Pausing 5 minutes for VMX bootup before pushing configuration via ssh"
+  pause:
+    minutes: 5
+   

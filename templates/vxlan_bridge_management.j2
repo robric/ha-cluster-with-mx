@@ -1,0 +1,15 @@
+<network>
+  <name>br-nat-mngt</name>
+  <forward mode='nat'>
+    <nat>
+      <port start='1024' end='65535'/>
+    </nat>
+  </forward>
+  <bridge name='br-nat-mngt' stp='on' delay='0'/>
+  <mac address='00:00:FF:AB:CD:EF'/>
+  <ip address='192.168.222.1' netmask='255.255.255.0'>
+    <dhcp>
+      <range start='192.168.222.2' end='192.168.222.254'/>
+    </dhcp>
+  </ip>
+</network>

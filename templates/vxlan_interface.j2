@@ -1,0 +1,10 @@
+DEVICE=vx-{{ item[0].vni }}-{{ item[1].name }}
+ONBOOT=yes
+DEVICETYPE=ovs
+TYPE=OVSTunnel
+OVS_BRIDGE=br-{{ item[0].name }}
+OVS_TUNNEL_TYPE=vxlan
+OVS_TUNNEL_OPTIONS="options:remote_ip={{ item[1].host_ip }} option:key={{ item[0].vni }} options:dst_port=4789"
+BOOTPROTO=none
+NAME=vx-{{ item[0].vni }}-{{ item[1].name }}
+NM_CONTROLLED=no

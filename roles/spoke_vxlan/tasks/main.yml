@@ -1,0 +1,39 @@
+---
+# tasks file for spoke_vxlan
+
+#
+# Removed br-nat-mngt it should be only on hub
+#
+# name: Define libvirt networks for management
+# virt_net:
+#   command: define
+#   name: br-nat-mngt
+#   xml: '{{ lookup("template", "templates/vxlan_bridge_management.j2") }}'
+#
+# name: Start libvirt networks
+# virt_net: 
+#   command: create
+#   name: br-nat-mngt
+#   state: active
+#
+# 
+# - name: Apply auto-start to libvirt networks
+#   virt_net: 
+#     autostart: yes
+#     name: br-nat-mngt
+#    
+ 
+- name: Create network scripts for OVS bridges KVM spoke hosts
+  template:
+    src: "templates/vxlan_bridge.j2"
+    dest: "/etc/sysconfig/network-scripts/ifcfg-br-{{ item.name }}"
+  with_items: "{{ topology.networks }}"
+
+- name: Create the vxlan interfaces toward hub vxlan for all spoke vxlan 
+  template:
+    src: "templates/vxlan_interface.j2"
+    dest: "/etc/sysconfig/network-scripts/ifcfg-{{ item[0].name }}-{{ item[1].name }}"
+  with_nested:
+    - "{{ topology.networks }}"
+    - "{{ hub_list }}"
+

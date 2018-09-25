@@ -1,0 +1,1 @@
+{% for item in topology.instances %}<host mac="00:00:FF:AA:AA:{{ '%02d'|format(item.vm_id)}}" name="{{item.name}}" ip="192.168.222.1{{ '%02d'|format(item.vm_id)}}"/>,{% endfor %}

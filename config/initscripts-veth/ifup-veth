@@ -1,0 +1,62 @@
+#!/bin/bash
+#
+# veth configuration script to plug OVS and Linux Bridge
+#
+#
+# Based on Network Interface Configuration System
+# Copyright (c) 1996-2009 Red Hat, Inc. all rights reserved.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+. /etc/init.d/functions
+
+cd /etc/sysconfig/network-scripts
+. ./network-functions
+
+[ -f ../network ] && . ../network
+
+CONFIG=${1}
+
+need_config ${CONFIG}
+
+source_config
+
+OTHERSCRIPT="/etc/sysconfig/network-scripts/ifup-${REAL_DEVICETYPE}"
+
+if [ ! -x ${OTHERSCRIPT} ]; then
+        OTHERSCRIPT="/etc/sysconfig/network-scripts/ifup-eth"
+fi
+
+ip link add \
+        name ${DEVICE}-o \
+        type veth \
+        peer name ${DEVICE}-l
+
+if [ -n "${OVS_BRIDGE}" ]; then
+        if ovs-vsctl br-exists "${OVS_BRIDGE}"; then :; else
+                /sbin/ifup "${OVS_BRIDGE}"
+        fi
+        ovs-vsctl add-port ${OVS_BRIDGE} ${DEVICE}-o 2>/dev/null
+
+        ip addr flush dev ${DEVICE}-l 2>/dev/null
+        ip link set dev ${DEVICE}-o up
+        ip link set \
+                dev ${DEVICE}-l up
+        ethtool_set
+        [ -n "${LINKDELAY}" ] && /bin/sleep ${LINKDELAY}
+        [ -r /var/run/radvd/radvd.pid ] && kill -HUP $(cat /var/run/radvd/radvd.pid)
+fi
+
+${OTHERSCRIPT} ${CONFIG}
+

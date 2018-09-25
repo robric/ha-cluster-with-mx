@@ -1,0 +1,187 @@
+---
+#
+#       tasks for server_install role
+#
+
+#
+#        Run some basic sanity checks such as make sure we have unique VM Names, Ids and correct range
+#
+
+- name: Validate that instance indentifiers are unique
+  assert:
+    that: >
+      topology.instances | map (attribute='vm_id') | list | count
+      ==
+      topology.instances | map (attribute='vm_id') | list | unique | count
+    msg: "Error: duplicate vm_id"
+  delegate_to: 127.0.0.1
+  run_once: true
+
+- name: Validate that instance names are unique
+  assert:
+    that: >
+      topology.instances | map (attribute='name') | list | count
+      ==
+      topology.instances | map (attribute='name') | list | unique | count
+    msg: "Error: duplicate instance name"
+  delegate_to: 127.0.0.1
+  run_once: true
+    
+- name: Validate that vm_id is in [0..99] range
+  assert:
+    that:
+      - topology.instances | map (attribute='vm_id') | list | max < 100
+      - topology.instances | map (attribute='name') | list | min  >= 0
+    msg: "error: vm_id range is [0..99]"
+  delegate_to: 127.0.0.1
+  run_once: true
+      
+
+
+  
+# Package installation and daemon start
+
+- name: Install core repos and packages on hosts
+  yum:
+    name: "{{ packages }}"
+  vars:
+    packages:
+      - epel-release
+      - https://www.rdoproject.org/repos/rdo-release.rpm
+
+- name: Install packages (yum)
+  yum:
+    name: "{{ packages }}"
+  vars:
+    packages:
+    - libguestfs
+    - libguestfs-tools
+    - libguestfs-tools
+    - virt-install
+    - libvirt
+    - libvirt-python
+    - net-tools
+    - tcpdump
+    - telnet
+    - python-pip
+    - sshpass
+    
+- name: Install KVM and OVS packages (yum)
+  yum:
+    name: "{{ packages }}"
+  vars:
+    packages:
+    - qemu-kvm
+    - openvswitch
+
+- name: Install python lxml module for ansible virt_net (pip)
+  pip:
+    name: lxml
+
+#  iptables is impacting VXLAN forwarding   
+#  However it is required for NAT forwarding 
+#  Keeping this in comment in case we need it again
+#
+#
+- name: Stop iptables
+  systemd:
+    state: stopped
+    name: firewalld
+    enabled: False
+      
+#      iptables -I INPUT -j ACCEPT
+#      iptables -I FORWARD -j ACCEPT
+#      /sbin/iptables-save
+#      
+#    
+#
+#
+#
+
+- name: Start libvirt
+  systemd:
+    state: restarted
+    name: libvirtd
+    enabled: True
+    
+- name: Start openvswitch
+  systemd:
+    state: started
+    name: openvswitch
+    enabled: True
+#
+#
+# Enable Nested virtualisation
+# 
+#
+- name: Copy kvm-nested.conf (enable nested virtualisation + disable apicv)
+  copy:
+    src: 'config/kvm-nested.conf'
+    dest: '/etc/modprobe.d/kvm-nested.conf'
+
+- name: Remove kvm_intel module
+  modprobe:
+    name: kvm_intel
+    state: absent
+
+- name: Restart kvm_intel module
+  modprobe:
+    name: kvm_intel
+    state: present
+  
+- name: Verify that nested virtualisation is activated
+  shell: cat /sys/module/kvm_intel/parameters/nested
+  register: nested
+
+- debug: 
+    msg: "Activation of nested virtualisation: {{nested.stdout}}"
+
+#
+#     Load¨base images for VMX and linux in /tmp folder
+#
+
+- name: Copy metadata-usb to host for VMX customization
+  copy:
+    src: 'config/metadata-usb.img'
+    dest: '/tmp/metadata-usb.img'
+   
+- name: Copy {{ vmx_image_name }} to local server 
+  get_url:
+    url: "{{ vmx_download_url }}/{{ vmx_image_name }}"
+    dest: /tmp/{{ vmx_image_name }}
+
+#- name: Copy {{ os_image_name }} to local server 
+#  get_url:
+#    url: "{{ os_download_url }}/{{ os_image_name }}"
+#    dest: /tmp/{{ os_image_name }}
+#- name: Customize Linux image (enabling ssh / root password "c0ntrail123")
+#  shell: | 
+#    virt-customize -a /tmp/{{ os_image_name }} \
+#    --root-password password:c0ntrail123 \
+#    --hostname linux-vm \
+#    --run-command 'sed -i "s/PasswordAuthentication no/PasswordAuthentication yes/g" /etc/ssh/sshd_config' \
+#    --run-command 'systemctl enable sshd' \
+#    --run-command 'yum remove -y cloud-init' \
+#    --selinux-relabel \
+#  register: customized
+
+#- name: Display shell customisation output for Linux
+#  debug: 
+#    msg: "Output for virt-customize: {{customized.stdout}}"
+#
+- name: Customize VMX image (enabling ssh / root password "root123")
+  shell: | 
+    virt-copy-in -a  /tmp/{{ vmx_image_name }} /tmp/metadata-usb.img /home/pfe/junos/
+  register: customized
+  
+- name: Display shell virt-copy output for VMX
+  debug: 
+    msg: "Output for virt-customize: {{customized.stdout}}"
+
+    
+- lineinfile: 
+    dest: "/etc/sysconfig/network-scripts/ifcfg-{{ ansible_default_ipv4.interface }}"
+    state: present
+    regexp: '^MTU'
+    line: 'MTU=9000'
+

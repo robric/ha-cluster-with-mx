@@ -1,0 +1,12 @@
+---
+
+
+# Install VMs
+
+
+
+- hosts: kvm_hosts
+  roles:
+     - create_facts
+     - define_vms
+

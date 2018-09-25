@@ -1,0 +1,104 @@
+#
+# Location of base images
+# Note: only nested VMX images are supported:
+#      For more informaton:refer to 
+#      https://www.juniper.net/documentation/en_US/vmx18.1/topics/concept/vmx-nested-vm-overview.html
+#
+
+vmx_download_url: http://10.84.5.120/cs-customer/images/vmx
+vmx_image_name: vmx-nested-18.1R1.9-9.qcow2
+#
+# Direct access from Cloud:
+# os_download_url: https://cloud.centos.org/centos/7/images/
+#
+
+os_download_url: http://10.84.5.120/cs-customer/images
+os_image_name: CentOS-7-x86_64-GenericCloud-1710.qcow2
+
+#
+#    Definition of the topology
+#
+#    topology.networks   = virtual networks
+#            .instances  = virtual machines
+#            .flavors    = flavors for VMs
+#
+#    Semantic for topology.networks
+#
+#       topology.networks:
+#         "virtual_network_name":
+#           vni: vxlan vni (mandatory)
+#           ip_subnet: unused so far
+#
+
+topology:
+  networks:
+# Hardcoded management Virtual Network
+    - name: management  
+      vni: 99
+    - name: lan-dc
+      vni: 100
+    - name: wan-dc-p1-1
+      vni: 1000
+    - name: wan-dc-p1-2
+      vni: 1001
+    - name: wan-dc-dc
+      vni: 1005
+    - name: lan-p1
+      vni: 101
+#
+#    Semantic for topology.instances
+#
+#    Define Virtual Machine instances with the following structure:
+#
+#      name: VM-NAME:           ---> Name of the instances (must be unique)
+#      vm_id: VM-ID             ---> Two-digit vm-id unique vm-id
+#                                    It is used for interface names, telnet console port, MAC and Management IP 
+#      host_id: HOST-ID         ---> HOST-ID (0-99) is the id defined in the inventory "hostname ansible_host=X.Y.Z.W id=HOST-ID" 
+#                                    this defines the host on which the VM will be spawned
+#      flavor: fl-vmx-nested    ---> Flavor defined in topology.vms.flavors (identified by names vmx / comp / cont ...)
+#      interfaces:              ---> List of interfaces
+#        management:            ---> Mapping of Management interface to libvirt network
+#          - default                     Interface naming is vm-VM_ID-mgt
+#        user:                  ---> Mapping of data plane interfaces 
+#          0: network1                   Interface naming is vm-VM_ID-eth-Index, where index is define in the below mapping 
+#          1: network2                   (e.g. 1: network2 has interface vm-01-eth-01 ) 
+#          2: network3                   Note that on VMX starting indexing from 0 maps index X to ge-0/0/X
+#          etc.
+#
+#
+            
+  instances:
+    - name: vmx-dc-1
+      vm_id: 01
+      host_id: 1
+      flavor: fl-vmx-nested
+      interfaces:
+        management: management
+        user:  #name vm-Id_VM-eth-Id_IF # vm-00-eth-02
+          0: lan-dc
+          1: wan-dc-p1-1
+          2: wan-dc-dc
+    - name: vmx-dc-2
+      vm_id: 02
+      host_id: 1
+      flavor: fl-vmx-nested
+      interfaces:
+        management: management
+        user:
+          0: lan-dc
+          1: wan-dc-p1-2
+          2: wan-dc-dc
+    - name: vmx-remote
+      vm_id: 11
+      host_id: 1
+      flavor: fl-vmx-nested
+      interfaces:
+        management: management
+        user:
+          0: lan-p1
+          1: wan-dc-p1-2
+  flavors:
+    fl-vmx-nested:
+      vcpus: 4
+      ram: 16
+      disk: 20

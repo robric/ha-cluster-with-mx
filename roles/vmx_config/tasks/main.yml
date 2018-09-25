@@ -1,0 +1,38 @@
+---
+  
+#
+# FIXME - this is static and ugly for now - enhancement with dynamic inventory
+#
+
+- name: Copy VMX configuration file to host
+  copy:
+    src: 'config/{{ item.name }}.conf'
+    dest: '/tmp/{{ item.name }}.conf'
+  with_items: "{{ vmx_list }}"
+  when: "item.host_id==id"
+
+- name: Copy VMX configuration file from Host to VMX
+  shell: |
+    curl -u root:root123 -T /tmp/{{item.name}}.conf ftp://{{ item.mgt_ip }}/vmx-config.conf
+  with_items: "{{ vmx_list }}"
+  when: "item.host_id==id"
+
+#
+# FIXME - this is ugly yes  - enhancement with dynamic inventory
+#
+
+- name: commit configuration
+  shell: |
+    sshpass -p 'root123' ssh -o StrictHostKeyChecking=no  root@{{ item.mgt_ip }} 'cli -c "configure;load merge vmx-config.conf;commit;"'
+  with_items: "{{ vmx_list }}"
+  when: "item.host_id==id"
+  register: commit
+  
+- debug: 
+    msg: "Commit output: {{commit}}"
+  
+  
+
+
+
+

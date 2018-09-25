@@ -1,0 +1,40 @@
+---
+#
+#       tasks for set_facts
+#
+
+# list of facts
+
+- name: Create fact for managing VMX
+  set_fact:
+    vmx_list: "{{ vmx_list | default ([]) + [{ 'name':item.0.name, 'vm_id':item.0.vm_id, 'host_ip':hostvars[item.1].ansible_host, 'console_port':'40''%02d'|format(item.0.vm_id), 'mgt_ip':'192.168.222.1''%02d'|format(item.0.vm_id), 'host_id':item.0.host_id }] }}"
+  with_nested:
+    - "{{ topology.instances }}"
+    - "{{ groups.kvm_hosts }}"
+  when: '"vmx" in item.0.flavor and hostvars[item.1].id == item.0.host_id'
+  delegate_to: 127.0.0.1
+  run_once: yes
+
+- name: Create fact with list of spokes and IPs
+  set_fact:
+    spoke_list: "{{ spoke_list | default ([]) + [{ 'name':item, 'host_ip':hostvars[item].ansible_host }] }}"
+  with_items:
+    - "{{ groups.spoke_vxlan }}"
+  delegate_to: 127.0.0.1
+  run_once: yes
+
+- name: Create fact with list of hub and IPs
+  set_fact:
+    hub_list: "{{ hub_list | default ([]) + [{ 'name':item, 'host_ip':hostvars[item].ansible_host }] }}"
+  with_items:
+    - "{{ groups.hub_vxlan }}"
+  delegate_to: 127.0.0.1
+  run_once: yes
+  
+- debug: var=spoke_list
+  run_once: yes
+  
+- debug: var=hub_list
+  run_once: yes
+
+

@@ -1,0 +1,10 @@
+---
+
+
+# call install_via_hub playbook
+
+
+- hosts: hub_vxlan
+  roles:
+     - install_via_hub
+

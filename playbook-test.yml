@@ -1,0 +1,11 @@
+---
+# Install VMs
+
+- hosts: hub_vxlan
+  tasks:
+  - name: AutoStart VMX instances
+    virt:
+        name: vmx-dc-1
+        command: start
+        autostart: yes
+ 

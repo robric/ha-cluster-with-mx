@@ -1,0 +1,51 @@
+---
+# Task file for VXLAN Hub Host
+
+
+- name: Define libvirt networks for  management
+  virt_net:
+    command: define
+    name: br-nat-mngt
+    xml: '{{ lookup("template", "templates/vxlan_bridge_management.j2") }}'
+
+- name: Start libvirt networks
+  virt_net: 
+    command: create
+    name: br-nat-mngt
+    state: active
+
+- name: Apply auto-start to libvirt networks
+  virt_net: 
+    autostart: yes
+    name: br-nat-mngt
+
+- name: Create hook in /etc/libvirt for script execution
+  file:
+    path: '/etc/libvirt/hooks'
+    mode: 0755
+    state: directory
+
+- name: Copy libvirt hook script to connect veth-br-l to br-nat-mngt (ovs to linux bridge interworking)
+  copy:
+    src: 'config/libvirt-hook-network-script.sh'
+    dest: '/etc/libvirt/hooks/network'
+    mode: 0755
+
+- name: Create network scripts for OVS bridges on KVM hosts for non Management Networks
+  template:
+    src: "templates/vxlan_bridge.j2"
+    dest: "/etc/sysconfig/network-scripts/ifcfg-br-{{ item.name }}"
+  with_items: "{{ topology.networks }}"
+#  when: '"management" not in item.name'
+
+- name: Create network scripts for the p2p vxlan interfaces toward all spoke vxlan for hub
+  template:
+    src: "templates/vxlan_interface.j2"
+    dest: "/etc/sysconfig/network-scripts/ifcfg-{{ item[0].name }}-{{ item[1].name }}"
+  with_nested:
+    - "{{ topology.networks }}"
+    - "{{ spoke_list }}"
+#  when: '"management" not in item[0].name'
+
+
+

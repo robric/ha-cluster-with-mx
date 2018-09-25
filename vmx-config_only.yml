@@ -1,0 +1,10 @@
+---
+
+
+# Install VMs
+
+- hosts: kvm_hosts
+  roles:
+     - create_facts
+     - vmx_config
+     

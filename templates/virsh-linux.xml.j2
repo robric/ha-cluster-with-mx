@@ -1,0 +1,48 @@
+<domain type="kvm">
+  <name>{{ item.name }}</name>
+  <memory>{{ topology.flavors[item.flavor].ram * 1048576 }}</memory>
+  <vcpu>{{ topology.flavors[item.flavor].vcpus }}</vcpu>
+  <os>
+    <type arch="x86_64">hvm</type>
+    <boot dev="hd"/>
+  </os>
+  <devices>
+    <emulator>/usr/libexec/qemu-kvm</emulator>
+    <disk type="file" device="disk">
+      <driver name="qemu" type="qcow2"/>
+      <source file="/var/lib/libvirt/images/{{ item.name }}-{{ os_image_name }}"/>
+      <target dev="vda" bus="virtio"/>
+    </disk>
+     <interface type="network">
+      <source network="{{ item.interfaces.management }}"/>
+      <model type="virtio"/>
+      <mac address='00:00:FF:AA:AA:{{ "%02d"|format(item.vm_id)}}'/>
+      <target dev='vm-{{ "%02d"|format(item.vm_id)}}-mgt'/>
+    </interface>
+{% for index,net in item.interfaces.user.items() %}
+    <interface type="network">
+      <source network="br-{{ net }}" />
+      <model type="virtio"/>
+      <target dev='vm-{{ "%02d"|format(item.vm_id)}}-eth-{{ "%02d"|format(index)}}'/>
+    </interface>
+{% endfor %}
+    <input type="tablet" bus="usb"/>
+    <graphics type="spice" port="-1" tlsPort="-1" autoport="yes">
+      <image compression="off"/>
+    </graphics>
+    <serial type="tcp">
+      <source mode="bind" host="0.0.0.0" service="40{{ "%02d"|format(item.vm_id) }}"/>
+      <protocol type="telnet"/>
+    </serial>
+    <console type="pty">
+      <target type="virtio"/>
+    </console>
+    <channel type="unix">
+      <source mode="bind"/>
+      <target type="virtio" name="org.qemu.guest_agent.0"/>
+    </channel>
+    <channel type="spicevmc">
+      <target type="virtio" name="com.redhat.spice.0"/>
+    </channel>
+  </devices>
+</domain>
