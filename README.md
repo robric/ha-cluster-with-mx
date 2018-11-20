@@ -50,10 +50,12 @@ topology:
       vni: 101
  
  This generate the following linux bridges and libvirt networks (note that "br-" is appended in front of networks):
- 
+
+
 virsh net-list
+
 Name                 State      Autostart     Persistent 
- br-lan-dc            active     yes           yes
+ r-lan-dc            active     yes           yes
  br-lan-p1            active     yes           yes
  br-management        active     yes           yes
  br-nat-mngt          active     yes           yes
