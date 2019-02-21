@@ -22,10 +22,10 @@ Instructions:
   - br-nat-mngt: Linux Bridge with NAT configured via libvirt to connect to the outer world (ssh, http access, yum install etc..)
   - br-management: OVS bridge to attach VM management interfaces. This bridge is actually connected to br-nat-management via veth interfaces (libvirt network hook script).
   - Next all other bridges are defined as per the var file located in ha-cluster-with-mx/group_vars/all/vars.yaml
-'''
+"""
 test---notest
 
-'''
+"""
 Virtual Machines:
 - Network devices:
   So far VMX can be brought up with appropriate configuration (stored in the config/ folder with name matching). It is rather simple to deploy different types of VMs with this script.
