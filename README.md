@@ -36,6 +36,7 @@ Customization:
 
 In the vars.yaml file, networks are defined as follow: 
 
+```
 topology:
   networks:
     # Hardcoded management Virtual Network
@@ -51,7 +52,8 @@ topology:
       vni: 1005
     - name: lan-p1
       vni: 101
- 
+```
+
  This generate the following linux bridges and libvirt networks (note that "br-" is appended in front of networks):
 
 
