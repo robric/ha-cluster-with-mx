@@ -1,7 +1,13 @@
-HA cluster deployment based on topology deployer 
+# HA cluster deployment based on topology deployer 
 
-This script will deploy a baseline for complex topologies based on VMX on fresh compute reimaged with Centos (tested with 7.5, following versions should work too assuming right packages). 
+## Objectives
 
+This set of ansible  playbooks will deploy a complex topology based on VMX and Contrail/Openstack Virtual Machines and nested virtualisation. It assumes solely a fresh compute reimaged with Centos (tested with 7.5, following versions should work too assuming right packages). 
+
+## Topology
+
+
+## 
 Instructions:
  - Reimage a set of servers in Centos 7.5
  - Edit the inventory file (inventory.ini) with host information. Single hub and several spokes definition in appropriate groups is mandatory as this script will deploy an overlay topology to transport Virtual Networks in a hub and spoke fashion thanks to OVS VXLAN.
@@ -22,19 +28,22 @@ Instructions:
   - br-nat-mngt: Linux Bridge with NAT configured via libvirt to connect to the outer world (ssh, http access, yum install etc..)
   - br-management: OVS bridge to attach VM management interfaces. This bridge is actually connected to br-nat-management via veth interfaces (libvirt network hook script).
   - Next all other bridges are defined as per the var file located in ha-cluster-with-mx/group_vars/all/vars.yaml
-"""
-test---notest
 
-"""
 Virtual Machines:
+
 - Network devices:
   So far VMX can be brought up with appropriate configuration (stored in the config/ folder with name matching). It is rather simple to deploy different types of VMs with this script.
+
 - Contrail installation:
   This script actually is made to work in conjunction with Contrail's ansible deployer. For this purpose, instances.yaml and clone of this repository is actually installed on the hub site. Standard Contrail installation (provider kvm must follow) with regular scripts starting with provision_instances which will created instances. Same naming of networks (with br-) as define in var file must be used. 
 
 Customization: 
 
-In the vars.yaml file, networks are defined as follow: 
+Networks are defined in the vars.yaml file with two parameters: 
+ - name 
+ - vni for VXLAN 
+
+Networks 
 
 ```
 topology:
