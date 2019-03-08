@@ -127,9 +127,12 @@ There is some trick and complexity behind management as it is actually made of 2
        +------------------------------------------------------+                 +------------------------------------------------------+                                                                                     
 ```
 
+In order to illustrate the above, we can see the list of interfaces below (taken from HUB VXLAN node).
 
 ```
 
+[root@5b5s40 ~]#ip addr
+[...]
 9: br-management: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UNKNOWN group default qlen 1000
     link/ether 9e:87:b2:80:19:44 brd ff:ff:ff:ff:ff:ff
     inet6 fe80::9c87:b2ff:fe80:1944/64 scope link 
@@ -149,7 +152,81 @@ There is some trick and complexity behind management as it is actually made of 2
     link/ether 72:f8:79:7d:db:7d brd ff:ff:ff:ff:ff:ff
     inet6 fe80::70f8:79ff:fe7d:db7d/64 scope link 
        valid_lft forever preferred_lft forever
- 
+```
+
+We can see that on HUB VXLAN two management bridges are created and VMs have an interface in the br-management network.
+
+```
+[root@5b5s40 ~]# virsh net-list
+ Name                 State      Autostart     Persistent
+----------------------------------------------------------
+[ ...}
+ br-management        active     yes           yes
+ br-nat-mngt          active     yes           yes
+[...]
+
+[root@5b5s40 ~]# virsh list
+ Id    Name                           State
+----------------------------------------------------
+ 1     vmx-dc-1                       running
+ 3     vmx-dc-2                       running
+ 7     compute-4v-10                  running
+ 8     compute-4v-9                   running
+ 9     compute-4v-8                   running
+ 10    compute-6v-6                   running
+ 11    compute-6v-5                   running
+ 12    compute-4v-7                   running
+ 36    vmx-remote                     running
+
+[root@5b5s40 ~]# virsh domiflist vmx-dc-1
+Interface  Type       Source     Model       MAC
+-------------------------------------------------------
+vm-01-mgt  bridge       br-management virtio      00:00:ff:aa:aa:01
+vm-01-eth-00 bridge     br-lan-dc  virtio      52:54:00:26:de:61
+vm-01-eth-01 bridge     br-wan-dc-p1-1 virtio      52:54:00:62:c1:49
+vm-01-eth-02 bridge     br-wan-dc-dc virtio      52:54:00:cd:32:f1
+
+[root@5b5s40 ~]# virsh domiflist compute-4v-10 
+Interface  Type       Source     Model       MAC
+-------------------------------------------------------
+vnet0      bridge     br-management virtio      52:54:00:9d:86:22
+vnet1      bridge     br-lan-dc  virtio      52:54:00:7f:0e:09
+
+[root@5b5s40 ~]# 
+
+```
+On the LEAF VXLAN, only br-management network is configured to connect VM in OOB
+```
+[root@5b5s41 ~]# virsh net-list
+ Name                 State      Autostart     Persistent
+----------------------------------------------------------
+[...]
+br-management        active     yes           yes
+
+
+[root@5b5s41 ~]# 
+
+[root@5b5s41 ~]# virsh list
+ Id    Name                           State
+----------------------------------------------------
+ 7     all-in-one-3                   running
+ 8     all-in-one-2                   running
+ 9     all-in-one-1                   running
+ 10    compute-4v-1                   running
+ 11    compute-4v-3                   running
+ 12    compute-4v-2                   running
+ 13    compute-4v-4                   running
+
+[root@5b5s41 ~]# 
+
+[root@5b5s41 ~]# virsh domiflist all-in-one-3 
+Interface  Type       Source     Model       MAC
+-------------------------------------------------------
+vnet0      bridge     br-management virtio      52:54:00:c7:f8:8b
+vnet1      bridge     br-lan-dc  virtio      52:54:00:23:b2:72
+
+[root@5b5s41 ~]# 
+
  ```    
  
        
