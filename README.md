@@ -10,7 +10,7 @@ This deployment is mostly for testing purposes. Upon completion of the deploymen
  - 10 nested computes nodes: 
  - HA control planes (openstack all but nova-compute, contrail all but vrouter):
  - Redundant VMX GW: vmx-dc-x
- - Remote PE (vmx-remote): 
+ - Remote PE: vmx-remote
 
 ```
                                                                                                                                              
@@ -57,11 +57,102 @@ This deployment is mostly for testing purposes. Upon completion of the deploymen
                                                                                                           
 ```
 
-IP Addressing
+## IP Addressing
 
-[.161 to .170]
- .151/.152/.153
+All Contrail nodes are in a single control-plan Virtual Network "br-lan-dc" with IP subnet 192.168.100.0/24 with:
+ - Computes .161 to .170
+ - Controllers: .151,.152 and .153
+
+VMX have several interfaces as indicated on the picture:
+ - VMX IP in br-lan-dc: .101 and .102 with VRRP IP .254
+
+## Management 
+
+An out of band management connects all VMs in the 192.168.222.0/24 network: note that this is NOT the default libvirt network (192.168.122.0/24).
+
+There is some trick and complexity behind management as it is actually made of 2 management networks cross-connected via veth on a central node (an OVS one and a linux bridge one for a proper IP integration in qemu/libvirt). 
+
+```
+                                                                                                                                                                                                                   
+       VM-XXX are VMs, they can be VMX or CONTRAIL/OPENSTACK VMs                                                                                                                                                   
+                                                                                                                                                                                                                   
+                                                  +----------------------------------------------------------+                                                                                                     
+                                                  |              HUB VXLAN NODE                              |                                                                                                     
+                                                  |                                                          |                                                                                                     
+                                                  |                                                          |                                                                                                     
+                                                  |                                                          |                                                                                                     
+                                                  |         +---------------------+                          |                                                                                                     
+                                                  |         |     br-nat-mngt     |                          |                                                                                                     
+                                                  |         |  192.168.222.0/24   |                          |                                                                                                     
+                                                  |         +----------|----------+                          |                                                                                                     
+                               physical NIC       |                    |                                     |                                                                                                     
+                               -to internet-      |                    |                                     |                                                                                                     
+                       ----------------------------                    |                                     |                                                                                                     
+                                                  |                  veth            +----------+            |                                                                                                     
+                                                  |                    |    +-----   |   VM-5   |            |                                                                                                     
+                                                  |                    |    |        +----------+            |                                                                                                     
+                                                  |                    |    |                                |                                                                                                     
+                                                  |         +---------------|-----+        +----------+      |                                                                                                     
+                                                  |         |     br-management   +-----   |   VM-6   |      |                                                                                                     
+                                                  |         ----------------------+        +----------+      |                                                                                                     
+                                                  |       -/    -/            \   \                          |                                                                                                     
+                                                  |     -/    -/               \   \                         |                                                                                                     
+                                                  +----/-----/------------------\---\------------------------+                                                                                                     
+                                                     -/    /                     \   \                                                                                                                             
+                                                   -/    -/                       \   \                                                                                                                            
+                                                  /    -/                          \   \        - br-nat-mngt provides access to host / internet through NAT                                                       
+                                                -/ V  /                             \ V \       - br-management connects VN in a Layer 2 bridge                                                                    
+                                              -/  X -/                               \ X \      - both management bridges are dynamicall interconnected through a                                                  
+                                             /  L -/                                  \ L \     veth interfaces via a libvirt hook script ( /etc/libvirt/hooks/qemu )                                              
+                                           -/  A-/                                     \ A \                                                                                                                       
+                                         -/  N /                                        \ N \                                                                                                                      
+                                       -/    -/                                          \   \                                                                                                                     
+             +------------------------/-----/-----------------------+                 +------------------------------------------------------+                                                                     
+             |                      -/   -/       LEAF VXLAN NODE 1 |                 |    \   \                           LEAF VXLAN NODE 2 |                                                                     
+             |                    -/    /                           |                 |     \   \                                            |                                                                     
+             |                   /    -/                            |                 |      \   \                                           |                                                                     
+             |                 -/   -/                              |                 |       \   \                                          |                                                                     
+             |               -/    /      +----------+              |                 |        \   \               +----------+              |                                                                     
+             |              /    -/----   |   VM-1   |              |                 |         \   \     +-----   |   VM-2   |              |                                                                     
+             |            -/   -/|        +----------+              |                 |          \   \    |        +----------+              |                                                                     
+             |          -/   -/  |                                  |                 |           \   \   |                                  |                                                                     
+             |   +-----/----/----|-----+                            |                 |   +---------------|-----+                            |                                                                     
+             |   |     br-management   |                            |                 |   |     br-management   |                            |                                                                     
+             |   +---------------|-----+                            |                 |   +---------------|-----+                            |                                                                     
+             |                   |                                  |                 |                   |                                  |                                                                     
+             |                   |        +----------+              |                 |                   |        +----------+              |                                                                     
+             |                   +-----   |   VM-3   |              |                 |                   +-----   |   VM-4   |              |                                                                     
+             |                            +----------+              |                 |                            +----------+              |                                                                     
+             |                                                      |                 |                                                      |                                                                     
+             +------------------------------------------------------+                 +------------------------------------------------------+                                                                     
+```
+
+
+```
+
+9: br-management: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/ether 9e:87:b2:80:19:44 brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::9c87:b2ff:fe80:1944/64 scope link 
+       valid_lft forever preferred_lft forever
+       
+18: br-nat-mngt: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 00:00:ff:ab:cd:ef brd ff:ff:ff:ff:ff:ff
+    inet 192.168.222.1/24 brd 192.168.222.255 scope global br-nat-mngt
+       valid_lft forever preferred_lft forever
+
+14: veth-mngt-l@veth-mngt-o: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master br-nat-mngt state UP group default qlen 1000
+    link/ether 4e:94:66:a5:c7:7e brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::4c94:66ff:fea5:c77e/64 scope link 
+       valid_lft forever preferred_lft forever
+
+15: veth-mngt-o@veth-mngt-l: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 72:f8:79:7d:db:7d brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::70f8:79ff:fe7d:db7d/64 scope link 
+       valid_lft forever preferred_lft forever
  
+ ```    
+ 
+       
 ## Instructions
 
  - Reimage a set of servers in Centos 7.5
