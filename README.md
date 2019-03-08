@@ -4,13 +4,17 @@
 
 This set of ansible  playbooks will deploy a complex topology based on VMX and Contrail/Openstack Virtual Machines and nested virtualisation. It assumes solely a fresh compute reimaged with Centos (tested with 7.5, following versions should work too assuming right packages). 
 
-## Topology
+## Virtual Topology
 
 This deployment is mostly for testing purposes. Upon completion of the deployment, the following VMs will be spawned:
  - 10 nested computes nodes: 
  - HA control planes (openstack all but nova-compute, contrail all but vrouter):
  - Redundant VMX GW: vmx-dc-x
  - Remote PE: vmx-remote
+
+This virtual topology is spread over several computes in order to be be able onboard enough compute ressources. For this purpose an overlay network (VXLAN) is implemented in order to virtually connect all VMs in consistent virtual networks wherever their location. Note that this implies that jumbo frames must be transported from computes to computes so as to carry the overlay overhead flawlessly.
+
+The details of this implementation is detailed in the Overlay Networking section.
 
 ```
                                                                                                                                              
