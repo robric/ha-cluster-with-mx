@@ -63,9 +63,9 @@ topology:
       vni: 101
 ```
 
- This generate the following linux bridges and libvirt networks (note that "br-" is appended in front of networks):
+This generates the following linux bridges and libvirt networks (note that "br-" is appended in front of networks):
 
-
+```
 virsh net-list
 
 Name                 State      Autostart     Persistent 
@@ -78,14 +78,11 @@ Name                 State      Autostart     Persistent
  br-wan-dc-p1-2       active     yes           yes
  default              active     yes           yes
 
+ ```
  
 VMX Instances are defined as follow, with the appropriate mapping of interfaces.
-A dedicated management interface is created (hardcoded) to host the fxp0 interface, while other interfaces are mapped canonically:
- - user: 
-    0 ==> ge-0/0/0
-    1 ==> ge-0/0/1
-    [etc]
- 
+
+```
 instances:
     - name: vmx-dc-1
       vm_id: 01
@@ -101,13 +98,20 @@ instances:
       vm_id: 02
       host_id: 1
       flavor: fl-vmx-nested
+```
+
+For interfaces, a dedicated management interface is created (hardcoded) to host the fxp0 interface, while other interfaces are mapped canonically as follow: 
+
+```
+      interfaces:
+        management: management      ===========  mapped to ===============> fxp0
+        user:  
+          0: lan-dc                 ===========  mapped to ===============> ge-0/0/0
+          1: wan-dc-p1-1            ===========  mapped to ===============> ge-0/0/1
+          2: wan-dc-dc              ===========  mapped to ===============> ge-0/0/2
+```
+
+
 
 The name, management ip, console ports  are derived from the vm_id (VM identified must be unique) and interface id.
 
-
-
-        management: management
-        user:
-          0: lan-dc
-          1: wan-dc-p1-2
-2: wan-dc-dc
