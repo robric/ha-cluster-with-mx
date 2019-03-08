@@ -234,20 +234,31 @@ vnet1      bridge     br-lan-dc  virtio      52:54:00:23:b2:72
  ```    
  
        
-## Instructions
+## Deployment Instructions
 
- - Reimage a set of servers in Centos 7.5
- - Edit the inventory file (inventory.ini) with host information. Single hub and several spokes definition in appropriate groups is mandatory as this script will deploy an overlay topology to transport Virtual Networks in a hub and spoke fashion thanks to OVS VXLAN.
- - Edit the var file, where topology is actually defined: 
+1. Reimage a set of servers in Centos 7.5
+2. On a git installer host (example HUB host): git clone go the created folder  
+```
+cd
+git clone https://github.com/robric/ha-cluster-with-mx
+cd ha-cluster-with-mx
+```
+4. Edit the inventory file (inventory.ini) with host information. Single hub and several spokes definition in appropriate groups is mandatory as this script will deploy an overlay topology to transport Virtual Networks in a hub and spoke fashion thanks to OVS VXLAN.
+```
+vi inventory.ini
+```
+5. Edit the var file, where topology is actually defined: 
    * vmx_download_url and vmx_image_name variables location getting a fresh vmx image (qcow2 format)
    * topology.network for networking definition: vni and names
    * topology.instances for VMX: vmx properties (such as interface connectivity) and flavor (defined in this file too)
    
- On a git installer host: 
- - "git clone https://github.com/robric/ha-cluster-with-mx"
- - "cd ha-cluster-with-mx"
- - "ansible-playbook -i inventory.ini deploy.yml" 
- 
+6. Run the set of playbooks
+
+```
+ansible-playbook -i inventory.ini deploy.yml" 
+``` 
+
+## Customisation 
  Networking: 
  
  This script will configure overlay networking with networks defined in the var file.
