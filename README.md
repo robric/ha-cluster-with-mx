@@ -6,9 +6,64 @@ This set of ansible  playbooks will deploy a complex topology based on VMX and C
 
 ## Topology
 
+This deployment is mostly for testing purposes. Upon completion of the deployment, the following VMs will be spawned:
+ - 10 nested computes nodes: 
+ - HA control planes (openstack all but nova-compute, contrail all but vrouter):
+ - Redundant VMX GW: vmx-dc-x
+ - Remote PE (vmx-remote): 
 
-## 
-Instructions:
+```
+                                                                                                                                             
+                                      +------------+                                                                                         
+                                      | vmx-remote |                                                                                         
+                                      /------------\                                                                                         
+                                     /              -\                                                                                       
+                {  br-wan-dc-p1-1 } /                 \ {  br-wan-dc-p1-2 }                                                                  
+                                  /-    ISIS/LDP       \                                                                                     
+                                 /                      -\                                                                                   
+                       ge-0/0/1 /                         - ge-0/0/1                                                                         
+                    +-----------       { br-wan-dc-dc }    +----------+                                                                      
+                    | vmx-dc-1 |---------------------------- vmx-dc-2 |                                                                      
+                    +-----|----+ ge-0/0/2         ge-0/0/2 +-----|----+       +        +-----------+                                         
+                 ge-0/0/0 |                                      | ge-0/0/0        +---- compute-1 | .161                                    
+                          |.101                             .102 |                 |   +-----------+                                         
+                          |                                      |                 |   +-----------+                                         
+                          |                                      |                 |---- compute-2 | .162                                    
+                          |                                      |                 |   +-----------+                                         
+                          |          192.168.100.0/24            |                 |   +-----------+                                         
+                          |                                      |                 |   | compute-3 | .163                                    
+         |-------------|-------------| { br-lan-dc }  -----------------------------|---+-----------+                                         
+         |             |             |                                             |   +-----------+                                         
+   +-----|----+  +-----|----+  +-----|----+                                        |---- compute-4 | .164                                    
+   |all-cont-1|  |all-cont-2|  |all-cont-3|                                        |   +-----------+                                         
+   +----------+  +----------+  +----------+                                        |   +-----------+                                         
+      .151          .152           .153                                            |---- compute-5 | .165                                    
+                                                            NESTED COMPUTES (10)   |   +-----------+                                         
+             HA SDN CONTROLLERS                             Naming convention      |   +-----------+                                         
+          (OPENSTACK / CONTRAIL)                            is actually            |---- compute-6 | .166                                    
+                                                            compute-#vcpu-ID       |   +-----------+                                         
+                                                                                   |   +-----------+                                         
+                                                                                   |---- compute-7 | .167                                    
+   NESTED TOPOLOGY:                                                                |   +-----------+                                         
+                                                                                   |   +-----------+                                         
+   - DATA PLANE CONNECTIVITY                                                       |---- compute-8 | .168                                    
+   - IP ADDRESSING                                                                 |   +-----------+                                         
+   - BRIDGE NAMES                                                                  |   +-----------+                                         
+                                                                                   |---- compute-9 | .169                                    
+                                                                                   |   +-----------+                                         
+                                                                                   |   +-----------+                                         
+                                                                                   +---- compute-10| .170                                    
+                                                                                       +-----------+                                         
+                                                                                                          
+```
+
+IP Addressing
+
+[.161 to .170]
+ .151/.152/.153
+ 
+## Instructions
+
  - Reimage a set of servers in Centos 7.5
  - Edit the inventory file (inventory.ini) with host information. Single hub and several spokes definition in appropriate groups is mandatory as this script will deploy an overlay topology to transport Virtual Networks in a hub and spoke fashion thanks to OVS VXLAN.
  - Edit the var file, where topology is actually defined: 
@@ -66,10 +121,11 @@ topology:
 This generates the following linux bridges and libvirt networks (note that "br-" is appended in front of networks):
 
 ```
-virsh net-list
 
-Name                 State      Autostart     Persistent 
- r-lan-dc            active     yes           yes
+[root@5b5s40 ~]# virsh net-list 
+ Name                 State      Autostart     Persistent
+----------------------------------------------------------
+ br-lan-dc            active     yes           yes
  br-lan-p1            active     yes           yes
  br-management        active     yes           yes
  br-nat-mngt          active     yes           yes
@@ -77,6 +133,8 @@ Name                 State      Autostart     Persistent
  br-wan-dc-p1-1       active     yes           yes
  br-wan-dc-p1-2       active     yes           yes
  default              active     yes           yes
+
+[root@5b5s40 ~]# 
 
  ```
  
