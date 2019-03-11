@@ -2,11 +2,13 @@
 
 ## Objectives
 
-This set of ansible  playbooks will deploy a complex topology based on VMX and Contrail/Openstack Virtual Machines and nested virtualisation. The scope of this deployment is mostly for lab/demo purposes where ressources requirements is important (example here: HA setup requiring 3 VMs + 2 redundant VMX + 1 remote PE + 10 computes), while performances is not a prerequisite. It assumes solely a fresh compute reimaged with Centos (tested with 7.5, later versions should work too - just not tested here -).  
+This set of ansible  playbooks will deploy a complex topology based on VMX and Contrail/Openstack Virtual Machines and nested virtualisation. The scope of this deployment is mostly for lab/demo purposes where ressources requirements is not crucial. For example,  we deploy on 2 physical servers a set of 16 nodes made up of Contrail/Openstack HA setup(3 VMs) + redundant VMX (2VMs)  + 1 remote PE (1 VM) + 10 computes (10 VMs).
 
-Note that there is not much server version dependancy vis a vis the Overlay Topology (Openstack, Contrail, VMX, etc..) as it is used for the contrusction of the virtual topology (VMs and VNs to hosting the Virtual Topology). 
+It assumes solely a fresh compute reimaged with Centos (tested with 7.5, later versions should work too - just not tested here -).  The ansible script taking care of node package installation and provisionning of the Virtual Topology and Configuring VMX, while the Contrail ansible deployer will deploy Contrail/Openstack thanks to pre-configured intallation files. 
 
-Again, we have nested virtualisation (VMs in VMs and VNs in VNs) so don't expect performances, still, this is a very good tool for demo/lab complex network emulation involving multiple nodes (think of testing multicast with several VMX and VROUTERs).
+Note that there is not much server version dependancy vis a vis the Overlay Topology (Openstack, Contrail, VMX, etc..) as it is used for the contruction of the virtual topology (VMs and VNs to hosting the Virtual Topology). 
+
+Again, we have nested virtualisation (VMs in VMs and VNs in VNs) so don't expect performances, still, this is a very good tool for building demo/lab complex network emulation involving multiple nodes (think of testing multicast with several VMX and VROUTERs) when you can't afford the luxury to purchase 10+ physical servers.
 
 ## Target Design
 
