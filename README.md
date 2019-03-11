@@ -243,6 +243,8 @@ vnet1      bridge     br-lan-dc  virtio      52:54:00:23:b2:72
  
 ## Phyiscal / Underlay Topology
 
+### Physical Topology
+
 In this example, the virtual topology is based on two servers (2 * 10 Cores each). The ansible playbook is flexible enough to add extra servers (have a look at the inventory file) and spread the vcpu/memory accordingly in order to support the virtual topology requirements (see customization).
 
 ```                                                                                                                                                                                                                                       
@@ -265,6 +267,13 @@ In this example, the virtual topology is based on two servers (2 * 10 Cores each
                                         VXLAN TUNNELS FOR VIRTUNAL NETWORKS/TOPO                                          
                                     ---------------------------------------------------                                                                                                                                                                                                                                                                                                                                                                                                          
 ```
+
+### Virtual Networking
+
+Virtual Networking is based on OVS VXLAN with the exception for management where we use a local linux bridge Virtual Network to enter the underlay networking through NAT (the reason is NAT +  OVS VN is not supported in libvirt).
+
+For this purpose we have Hub and Spoke Topology of phyiscal servers (i.e. the overlay traffic from spoke to spoke will transit through the Hub). This approach simplifies the definition of the networking topology to the detriment of performances.
+
 
 ## Deployment Instructions
 
