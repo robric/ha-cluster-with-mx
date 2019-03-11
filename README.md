@@ -2,9 +2,15 @@
 
 ## Objectives
 
-This set of ansible  playbooks will deploy a complex topology based on VMX and Contrail/Openstack Virtual Machines and nested virtualisation. It assumes solely a fresh compute reimaged with Centos (tested with 7.5, following versions should work too assuming right packages). 
+This set of ansible  playbooks will deploy a complex topology based on VMX and Contrail/Openstack Virtual Machines and nested virtualisation. The scope of this deployment is mostly for lab/demo purposes where ressources requirements is important (example here: HA setup requiring 3 VMs + 2 redundant VMX + 1 remote PE + 10 computes), while performances is not a prerequisite. It assumes solely a fresh compute reimaged with Centos (tested with 7.5, later versions should work too - just not tested here -).  
 
-## Virtual Topology
+Note that there is not much server version dependancy vis a vis the Overlay Topology (Openstack, Contrail, VMX, etc..) as it is used for the contrusction of the virtual topology (VMs and VNs to hosting the Virtual Topology). 
+
+Again, we have nested virtualisation (VMs in VMs and VNs in VNs) so don't expect performances, still, this is a very good tool for demo/lab complex network emulation involving multiple nodes (think of testing multicast with several VMX and VROUTERs).
+
+## Target Design
+
+### Virtual Topology
 
 This deployment is mostly for testing purposes. Upon completion of the deployment, the following VMs will be spawned:
  - 10 nested computes nodes: 
@@ -61,7 +67,7 @@ The details of this implementation is detailed in the Overlay Networking section
                                                                                                           
 ```
 
-## IP Addressing
+### IP Addressing of Virtual Topology
 
 All Contrail nodes are in a single control-plan Virtual Network "br-lan-dc" with IP subnet 192.168.100.0/24 with:
  - Computes .161 to .170
@@ -70,7 +76,7 @@ All Contrail nodes are in a single control-plan Virtual Network "br-lan-dc" with
 VMX have several interfaces as indicated on the picture:
  - VMX IP in br-lan-dc: .101 and .102 with VRRP IP .254
 
-## Management 
+### Management 
 
 An out of band management connects all VMs in the 192.168.222.0/24 network: note that this is NOT the default libvirt network (192.168.122.0/24).
 
@@ -233,7 +239,31 @@ vnet1      bridge     br-lan-dc  virtio      52:54:00:23:b2:72
 
  ```    
  
-       
+## Phyiscal / Underlay Topology
+
+In this example, the virtual topology is based on two servers (2 * 10 Cores each). The ansible playbook is flexible enough to add extra servers (have a look at the inventory file) and spread the vcpu/memory accordingly in order to support the virtual topology requirements (see customization).
+
+```                                                                                                                                                                                                                                       
+         +----------------------+                                                            +----------------------+     
+         |                      |                                                            |                      |     
+         |      SERVER 1        |                                                            |      SERVER 2        |     
+         |      (5b5s40)        |                +-----------------------+                   |      (5b5s41)        |     
+         |                      |                |                       |                   |                      |     
+         |                      |                |   IP CONNECTIVITY     |                   |                      |     
+         |                      |----------------|    (e.g. Fabric)      --------------------|                      |     
+         |      40 vcpu         |                |                       |                   |       40 vcpu        |     
+         |  (2*10 cores + HT)   |                +-----------------------+                   |   (2*10 cores + HT)  |     
+         |                      |                                                            |                      |     
+         |                      |                                                            |                      |     
+         |                      |                                                            |                      |     
+         +----------------------+                                                            +----------------------+     
+                                                                                                                         -
+                                                                                                                          
+                                    ---------------------------------------------------                                   
+                                        VXLAN TUNNELS FOR VIRTUNAL NETWORKS/TOPO                                          
+                                    ---------------------------------------------------                                                                                                                                                                                                                                                                                                                                                                                                          
+```
+
 ## Deployment Instructions
 
 1. Reimage a set of servers in Centos 7.5
