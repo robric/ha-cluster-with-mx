@@ -45,7 +45,7 @@
   with_nested:
     - "{{ topology.networks }}"
     - "{{ spoke_list }}"
-#  when: '"management" not in item[0].name'
+  when: 'spoke_list is defined'
 
 
 
