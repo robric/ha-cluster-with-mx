@@ -279,10 +279,13 @@ For this purpose we have Hub and Spoke Topology of phyiscal servers (i.e. the ov
 
 1. Reimage a set of servers in Centos 7.5
 2. On a git installer host (example HUB host): git clone go the created folder  
+
 ```
 cd
+yum install -y git ansible-2.4.2.0
 git clone https://github.com/robric/ha-cluster-with-mx
 cd ha-cluster-with-mx
+
 ```
 4. Edit the inventory file (inventory.ini) with host information. Single hub and several spokes definition in appropriate groups is mandatory as this script will deploy an overlay topology to transport Virtual Networks in a hub and spoke fashion thanks to OVS VXLAN.
 ```
