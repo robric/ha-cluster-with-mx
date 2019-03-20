@@ -96,7 +96,8 @@ topology:
         management: management
         user:
           0: lan-p1
-          1: wan-dc-p1-2
+          1: wan-dc-p1-1
+          2: wan-dc-p1-2
   flavors:
     fl-vmx-nested:
       vcpus: 4
