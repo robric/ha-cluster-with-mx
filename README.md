@@ -366,6 +366,80 @@ vi inventory.ini
 ```
 ansible-playbook -i inventory.ini deploy.yml" 
 ``` 
+You might give some retry due to reboot (a remote installer is better for that), but if you can not afford it (e.g. installation from VXLAN HUB host) - wait 5 minutes for reboot to complete and VMX to boot up, then run separetely the two scripts 
+
+```
+ansible-playbook -i inventory.ini vmx-config_only.yml
+ansible-playbook -i inventory.iniinstall_hub_only.yml
+```
+
+Now the virtual topology is installed
+
+7. Edit the contrail ansible deployer (it should have been cloned in the previous step)
+
+edit the instances.yaml (auto-generation is not automated yet)
+
+```
+cd
+[root@5b5s40 ~]# vi contrail-ansible-deployer/config/instances.yaml
+global_configuration:
+  CONTAINER_REGISTRY: ci-repo.englab.juniper.net:5010
+  REGISTRY_PRIVATE_INSECURE: True
+provider_config:
+  kvm:
+    image: CentOS-7-x86_64-GenericCloud-1805.qcow2   ############# potentially replace it - it is upgraded anyway - 
+    image_url: http://10.84.5.120/cs-customer/images ############# you may replace it https://cloud.centos.org/centos/7/images/
+    ssh_pwd: c0ntrail123
+    ssh_user: root
+    ssh_public_key:
+    ssh_private_key:
+    vcpu: 8
+    vram: 65536
+    vdisk: 170G
+    subnet_prefix: 192.168.222.0
+    subnet_netmask: 255.255.255.0
+    gateway: 192.168.222.1
+    nameserver: 192.168.222.1
+    ntpserver: 10.84.5.100                            ###### Use an ntp server 
+    domainsuffix: sdn.lab
+instances:
+  all-in-one-1:
+    provider: kvm
+    host: 10.87.65.29                                ###### Configure your PHyiscal HOST IP for all instances !
+    bridge: br-management
+    ip: 192.168.222.151
+    additional_interfaces:
+      - bridge: br-lan-dc
+        ip: 192.168.100.151
+        mask: 255.255.255.0
+    roles:
+      config_database:
+      config:
+      control:
+      analytics_database:
+      analytics:
+      webui:
+      openstack:
+ [....]
+```
+
+8. Launch the Contrail ansible deployer
+
+```
+ansible-playbook -i inventory/ playbooks/provision_instances.yml
+ansible-playbook -i inventory/ playbooks/configure_instances.yml 
+ansible-playbook -i inventory/ playbooks/install_openstack.yml
+ansible-playbook -i inventory/ playbooks/install_contrail.yml
+``` 
+
+9. Install some SSH redirection for remote reachability 
+
+On VXLAN HUB Host only, for UI access to out of band management network
+
+```
+ssh -fNT -L 0.0.0.0:8143:192.168.222.100:8143 root@**HOST_IP_ADDRESS** &
+ssh -fNT -L 0.0.0.0:80:192.168.222.100:80 root@**HOST_IP_ADDRESS** &
+```
 
 ## Customisation 
  Networking: 
