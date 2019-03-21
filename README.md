@@ -12,7 +12,9 @@ When deploying on several physical servers, the only assumption to take care of 
 
 ## Concretely 
 
-An example below, where an engineer has 3 servers with 20 vcpu each and wants to emulate a Contrail HA cluster with MX GW and remote on several computes (testing/assessing things such as load balancing, redundancy, convergence, scale-out scenarios). Considering the amount of ressources, it is not possible to run such a complex design on a single compute, while networking make things complicated to operate at networking level (many virtual networks mapped to VLANs which have stickyness at fabric level).
+Let's start this introduction with a concrete example. An engineer has 3 servers with 20 vcpu each and wants to emulate a Contrail HA cluster with redundant MX GW, a remote PE and a few distinct computes (4) to test/assess things such as load balancing, redundancy, failure testings, convergence, scale-out scenarios, etc. 
+
+Considering the amount of ressources, it is not possible to run such a complex design on a single compute (see the inventory of ressources below), while networking make things complicated to operate at networking level (many virtual networks mapped to VLANs which have stickyness at fabric level).
 
 ```
                                                           +------------------------------------+                   
@@ -62,8 +64,6 @@ An example below, where an engineer has 3 servers with 20 vcpu each and wants to
                                            +--------------------+                   +--------------------+         
                                                                                                                    
 ```
-
-The next section covers the deployment embedded in this  based on Openstack (multicast or massive scale-out scenarios on many computes). It is possible to modify/customize the topology for other requirements (example remote compute).
 
 ## Out of Band Management 
 
@@ -231,7 +231,8 @@ vnet1      bridge     br-lan-dc  virtio      52:54:00:23:b2:72
 [root@5b5s41 ~]# 
 
  ```    
- 
+The next section covers the deployment embedded in this  based on Openstack (multicast or massive scale-out scenarios on many computes). It is possible to modify/customize the topology for other requirements (example remote compute).
+
 # Topology Deployment Example
 
 ## Contrail HA design with VMX and Remote PE 
