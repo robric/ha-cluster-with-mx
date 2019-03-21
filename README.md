@@ -198,7 +198,7 @@ vnet1      bridge     br-lan-dc  virtio      52:54:00:7f:0e:09
 [root@5b5s40 ~]# 
 
 ```
-On the LEAF VXLAN, only br-management network is configured to connect VM in OOB
+On a SPOKE VXLAN host, only br-management network is configured to connect VM in OOB
 ```
 [root@5b5s41 ~]# virsh net-list
  Name                 State      Autostart     Persistent
