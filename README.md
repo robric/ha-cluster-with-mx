@@ -41,9 +41,9 @@ An example below, where an engineer has 3 servers with 20 vcpu each and wants to
                                                                   +------------------+                             
                                                                   |    SERVER 1      |                             
                                                                   |                  |                             
-                                                                  |  VMX-1 (4v)      |                             
-                                                                  /  VMX-2 (4v)      \                             
-                                                                /-|  VMX-3 (4v)      |\                            
+                                                                  |  VMX-GW-1 (4v)   |                             
+                                                                  /  VMX-GW-2 (4v)   \                             
+                                                                /-|  VMX-PE 3 (4v)   |\                            
                                                        V       /  |                  | \      V                    
                                                        X      /   |  Compute-1 (6v)  |  \     X                    
                                                        L    /-    +------------------+   -\   L                    
