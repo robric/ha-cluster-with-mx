@@ -2,7 +2,7 @@
 
 ## What is it ?
 
-The Multi Node Topology Deployer is ansible playbook that aims at deploying complex topologies in an automated fashion. It is based on virtualisation on both compute and networking ressources that can be spread on several physical servers in a transparent fashion. 
+The Multi Node Topology Deployer is a set of ansible playbooks that aims at deploying complex topologies in an automated fashion. It is based on virtualisation on both compute and networking ressources that can be spread on several physical servers in a transparent fashion. 
 
 So far deployment of networking nodes (outside contrail) is restricted  VMX VM (nested) newer release should include vQFX so Fabric topologies can be emulated too.
 
