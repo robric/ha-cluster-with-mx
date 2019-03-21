@@ -10,6 +10,8 @@ The main benefit of this approach is the automated defintion of OVS VXLAN overla
 
 When deploying on several physical servers, the only assumption to take care of is that you have IP connectivity between servers with JUMBO frames (this is the only step where you might need to reconfigure your switches). 
 
+## Concretely 
+
 An example below, where an engineer has 3 servers with 20 vcpu each and wants to emulate a Contrail HA cluster with MX GW and remote on several computes (testing/assessing things such as load balancing, redundancy, convergence, scale-out scenarios). Considering the amount of ressources, it is not possible to run such a complex design on a single compute, while networking make things complicated to operate at networking level (many virtual networks mapped to VLANs which have stickyness at fabric level).
 
 ```
@@ -29,10 +31,10 @@ An example below, where an engineer has 3 servers with 20 vcpu each and wants to
  Contrail HA SETUP VIRTUAL DEPLOYMENT ON 3 PHYSICAL SERVERS             |    |                                     
  WITH:                                                                  |    |                                     
                                                                         |    |                                     
- - 4 computes                                                           |    |                                     
- - 3 Controllers (Contrail/K8/OS)                                       |    |                                     
- - 2 VMX Gateway                                                       \      /                                    
- - 1 Remote VMX PE                                                      \    /                                     
+ - 4 computes: 6+5+4+4 = 21 vcpus                                       |    |                                     
+ - 3 Controllers (Contrail/K8/OS): 3*7 = 21 vpcus                       |    |                                     
+ - 2 VMX Gateway: 2*4 = 8 vcpus                                        \      /                                    
+ - 1 Remote VMX PE = 4 vcpus                                            \    /                                     
                                                                          \  /                                      
  Note that 2 vCPUs are kept free for each Server (18 each)                --                                       
                                                                                                                    
@@ -63,87 +65,9 @@ An example below, where an engineer has 3 servers with 20 vcpu each and wants to
 
 The next section covers the deployment embedded in this  based on Openstack (multicast or massive scale-out scenarios on many computes). It is possible to modify/customize the topology for other requirements (example remote compute).
 
-# Topology Deployment Example
+## Out of Band Management 
 
-## Contrail HA design with VMX and Remote PE 
-
-This set of ansible  playbooks will deploy a complex topology based on VMX and Contrail/Openstack Virtual Machines and nested virtualisation. The scope of this deployment is mostly for lab/demo purposes where ressources requirements is not crucial. For example,  we deploy on 2 physical servers a set of 16 nodes made up of Contrail/Openstack HA setup(3 VMs) + redundant VMX (2VMs)  + 1 remote PE (1 VM) + 10 computes (10 VMs).
-
-It assumes solely a fresh compute reimaged with Centos (tested with 7.5, later versions should work too - just not tested here -).  The ansible script taking care of node package installation and provisionning of the Virtual Topology and Configuring VMX, while the Contrail ansible deployer will deploy Contrail/Openstack thanks to pre-configured intallation files. 
-
-Note that there is not much server version dependancy vis a vis the Overlay Topology (Openstack, Contrail, VMX, etc..) as it is used for the contruction of the virtual topology (VMs and VNs to hosting the Virtual Topology). 
-
-Again, we have nested virtualisation (VMs in VMs and VNs in VNs) so don't expect performances, still, this is a very good tool for building demo/lab complex network emulation involving multiple nodes (think of testing multicast with several VMX and VROUTERs) when you can't afford the luxury to purchase 10+ physical servers.
-
-## Target Design
-
-### Virtual Topology
-
-This deployment is mostly for testing purposes. Upon completion of the deployment, the following VMs will be spawned:
- - 10 nested computes nodes: 
- - HA control planes (openstack all but nova-compute, contrail all but vrouter):
- - Redundant VMX GW: vmx-dc-x
- - Remote PE: vmx-remote
-
-This virtual topology is spread over several computes in order to be be able onboard enough compute ressources. For this purpose an overlay network (VXLAN) is implemented in order to virtually connect all VMs in consistent virtual networks wherever their location. Note that this implies that jumbo frames must be transported from computes to computes so as to carry the overlay overhead flawlessly.
-
-The details of this implementation is detailed in the Overlay Networking section.
-
-```
-                                                                                                                                             
-                                      +------------+                                                                                         
-                                      | vmx-remote |                                                                                         
-                                      /------------\                                                                                         
-                                     /              -\                                                                                       
-                {  br-wan-dc-p1-1 } /                 \ {  br-wan-dc-p1-2 }                                                                  
-                                  /-    ISIS/LDP       \                                                                                     
-                                 /                      -\                                                                                   
-                       ge-0/0/1 /                         - ge-0/0/1                                                                         
-                    +-----------       { br-wan-dc-dc }    +----------+                                                                      
-                    | vmx-dc-1 |---------------------------- vmx-dc-2 |                                                                      
-                    +-----|----+ ge-0/0/2         ge-0/0/2 +-----|----+       +        +-----------+                                         
-                 ge-0/0/0 |                                      | ge-0/0/0        +---- compute-1 | .161                                    
-                          |.101                             .102 |                 |   +-----------+                                         
-                          |                                      |                 |   +-----------+                                         
-                          |                                      |                 |---- compute-2 | .162                                    
-                          |                                      |                 |   +-----------+                                         
-                          |          192.168.100.0/24            |                 |   +-----------+                                         
-                          |                                      |                 |   | compute-3 | .163                                    
-         |-------------|-------------| { br-lan-dc }  -----------------------------|---+-----------+                                         
-         |             |             |                                             |   +-----------+                                         
-   +-----|----+  +-----|----+  +-----|----+                                        |---- compute-4 | .164                                    
-   |all-cont-1|  |all-cont-2|  |all-cont-3|                                        |   +-----------+                                         
-   +----------+  +----------+  +----------+                                        |   +-----------+                                         
-      .151          .152           .153                                            |---- compute-5 | .165                                    
-                                                            NESTED COMPUTES (10)   |   +-----------+                                         
-             HA SDN CONTROLLERS                             Naming convention      |   +-----------+                                         
-          (OPENSTACK / CONTRAIL)                            is actually            |---- compute-6 | .166                                    
-                                                            compute-#vcpu-ID       |   +-----------+                                         
-                                                                                   |   +-----------+                                         
-                                                                                   |---- compute-7 | .167                                    
-   NESTED TOPOLOGY:                                                                |   +-----------+                                         
-                                                                                   |   +-----------+                                         
-   - DATA PLANE CONNECTIVITY                                                       |---- compute-8 | .168                                    
-   - IP ADDRESSING                                                                 |   +-----------+                                         
-   - BRIDGE NAMES                                                                  |   +-----------+                                         
-                                                                                   |---- compute-9 | .169                                    
-                                                                                   |   +-----------+                                         
-                                                                                   |   +-----------+                                         
-                                                                                   +---- compute-10| .170                                    
-                                                                                       +-----------+                                         
-                                                                                                          
-```
-
-### IP Addressing of Virtual Topology
-
-All Contrail nodes are in a single control-plan Virtual Network "br-lan-dc" with IP subnet 192.168.100.0/24 with:
- - Computes .161 to .170
- - Controllers: .151,.152 and .153
-
-VMX have several interfaces as indicated on the picture:
- - VMX IP in br-lan-dc: .101 and .102 with VRRP IP .254
-
-### Management 
+### OOB definition: 192.168.222.0 reached via NAT from VXLAN HUB Host
 
 An out of band management connects all VMs in the 192.168.222.0/24 network: note that this is NOT the default libvirt network (192.168.122.0/24).
 
@@ -203,6 +127,8 @@ There is some trick and complexity behind management as it is actually made of 2
        |                                                      |                 |                                                      |                    
        +------------------------------------------------------+                 +------------------------------------------------------+                                                                                     
 ```
+
+### OK give me some examples
 
 In order to illustrate the above, we can see the list of interfaces below (taken from HUB VXLAN node).
 
@@ -306,6 +232,87 @@ vnet1      bridge     br-lan-dc  virtio      52:54:00:23:b2:72
 
  ```    
  
+# Topology Deployment Example
+
+## Contrail HA design with VMX and Remote PE 
+
+This set of ansible  playbooks will deploy a complex topology based on VMX and Contrail/Openstack Virtual Machines and nested virtualisation. The scope of this deployment is mostly for lab/demo purposes where ressources requirements is not crucial. For example,  we deploy on 2 physical servers a set of 16 nodes made up of Contrail/Openstack HA setup(3 VMs) + redundant VMX (2VMs)  + 1 remote PE (1 VM) + 10 computes (10 VMs).
+
+It assumes solely a fresh compute reimaged with Centos (tested with 7.5, later versions should work too - just not tested here -).  The ansible script taking care of node package installation and provisionning of the Virtual Topology and Configuring VMX, while the Contrail ansible deployer will deploy Contrail/Openstack thanks to pre-configured intallation files. 
+
+Note that there is not much server version dependancy vis a vis the Overlay Topology (Openstack, Contrail, VMX, etc..) as it is used for the contruction of the virtual topology (VMs and VNs to hosting the Virtual Topology). 
+
+Again, we have nested virtualisation (VMs in VMs and VNs in VNs) so don't expect performances, still, this is a very good tool for building demo/lab complex network emulation involving multiple nodes (think of testing multicast with several VMX and VROUTERs) when you can't afford the luxury to purchase 10+ physical servers.
+
+## Target Design
+
+### Virtual Topology
+
+This deployment is mostly for testing purposes. Upon completion of the deployment, the following VMs will be spawned:
+ - 10 nested computes nodes: 
+ - HA control planes (openstack all but nova-compute, contrail all but vrouter):
+ - Redundant VMX GW: vmx-dc-x
+ - Remote PE: vmx-remote
+
+This virtual topology is spread over several computes in order to be be able onboard enough compute ressources. For this purpose an overlay network (VXLAN) is implemented in order to virtually connect all VMs in consistent virtual networks wherever their location. Note that this implies that jumbo frames must be transported from computes to computes so as to carry the overlay overhead flawlessly.
+
+The details of this implementation is detailed in the Overlay Networking section.
+
+```
+                                                                                                                                             
+                                      +------------+                                                                                         
+                                      | vmx-remote |                                                                                         
+                                      /------------\                                                                                         
+                                     /              -\                                                                                       
+                {  br-wan-dc-p1-1 } /                 \ {  br-wan-dc-p1-2 }                                                                  
+                                  /-    ISIS/LDP       \                                                                                     
+                                 /                      -\                                                                                   
+                       ge-0/0/1 /                         - ge-0/0/1                                                                         
+                    +-----------       { br-wan-dc-dc }    +----------+                                                                      
+                    | vmx-dc-1 |---------------------------- vmx-dc-2 |                                                                      
+                    +-----|----+ ge-0/0/2         ge-0/0/2 +-----|----+       +        +-----------+                                         
+                 ge-0/0/0 |                                      | ge-0/0/0        +---- compute-1 | .161                                    
+                          |.101                             .102 |                 |   +-----------+                                         
+                          |                                      |                 |   +-----------+                                         
+                          |                                      |                 |---- compute-2 | .162                                    
+                          |                                      |                 |   +-----------+                                         
+                          |          192.168.100.0/24            |                 |   +-----------+                                         
+                          |                                      |                 |   | compute-3 | .163                                    
+         |-------------|-------------| { br-lan-dc }  -----------------------------|---+-----------+                                         
+         |             |             |                                             |   +-----------+                                         
+   +-----|----+  +-----|----+  +-----|----+                                        |---- compute-4 | .164                                    
+   |all-cont-1|  |all-cont-2|  |all-cont-3|                                        |   +-----------+                                         
+   +----------+  +----------+  +----------+                                        |   +-----------+                                         
+      .151          .152           .153                                            |---- compute-5 | .165                                    
+                                                            NESTED COMPUTES (10)   |   +-----------+                                         
+             HA SDN CONTROLLERS                             Naming convention      |   +-----------+                                         
+          (OPENSTACK / CONTRAIL)                            is actually            |---- compute-6 | .166                                    
+                                                            compute-#vcpu-ID       |   +-----------+                                         
+                                                                                   |   +-----------+                                         
+                                                                                   |---- compute-7 | .167                                    
+   NESTED TOPOLOGY:                                                                |   +-----------+                                         
+                                                                                   |   +-----------+                                         
+   - DATA PLANE CONNECTIVITY                                                       |---- compute-8 | .168                                    
+   - IP ADDRESSING                                                                 |   +-----------+                                         
+   - BRIDGE NAMES                                                                  |   +-----------+                                         
+                                                                                   |---- compute-9 | .169                                    
+                                                                                   |   +-----------+                                         
+                                                                                   |   +-----------+                                         
+                                                                                   +---- compute-10| .170                                    
+                                                                                       +-----------+                                         
+                                                                                                          
+```
+
+### IP Addressing of Virtual Topology
+
+All Contrail nodes are in a single control-plan Virtual Network "br-lan-dc" with IP subnet 192.168.100.0/24 with:
+ - Computes .161 to .170
+ - Controllers: .151,.152 and .153
+
+VMX have several interfaces as indicated on the picture:
+ - VMX IP in br-lan-dc: .101 and .102 with VRRP IP .254
+
+
 ## Phyiscal / Underlay Topology
 
 ### Physical Topology
@@ -375,9 +382,10 @@ ansible-playbook -i inventory.iniinstall_hub_only.yml
 
 Now the virtual topology is installed
 
-7. Edit the contrail ansible deployer (it should have been cloned in the previous step)
+7. Edit the contrail ansible deployer 
 
-edit the instances.yaml (auto-generation is not automated yet)
+Conntect to the VXLAN Hub host and edit the Contrail ansible config file instances.yaml (auto-generation is not automated yet)
+Things such as ntp server or Host IP of your physical hosts must be updated on all nodes.
 
 ```
 cd
@@ -423,7 +431,7 @@ instances:
  [....]
 ```
 
-8. Launch the Contrail ansible deployer
+8. Launch the Contrail ansible deployer at VXLAN hub
 
 ```
 ansible-playbook -i inventory/ playbooks/provision_instances.yml
