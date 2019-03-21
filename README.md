@@ -1,6 +1,71 @@
-# HA cluster deployment based on topology deployer 
+# Multi Node Topology Deployer 
 
-## Objectives
+## What is it ?
+
+The Multi Node Topology Deployer is ansible playbook that aims at deploying complex topologies in an automated fashion. It is based on virtualisation on both compute and networking ressources that can be spread on several physical servers in a transparent fashion. 
+
+So far deployment of networking nodes (outside contrail) is restricted  VMX VM (nested) newer release should include vQFX so Fabric topologies can be emulated too.
+
+The main benefit of this approach is the automated defintion of OVS VXLAN overlay networking connectivity between compute in which all Virtual Networks are transported. For simplicity, this is managed in a Hub and Spoke fashion. All Nodes (Contrail, Openstack, K8, VMX, ...) are subsequently deployed in this overlay. 
+
+When deploying on several physical servers, the only assumption to take care of is that you have IP connectivity between servers with JUMBO frames (this is the only step where you might need to reconfigure your switches). 
+
+An example below, where an engineer has 3 servers with 20 vcpu each and wants to emulate a Contrail HA cluster with MX GW and remote on several computes (testing/assessing things such as load balancing, redundancy, convergence, scale-out scenarios). Considering the amount of ressources, it is not possible to run such a complex design on a single compute, while networking make things complicated to operate at networking level (many virtual networks mapped to VLANs which have stickyness at fabric level).
+
+```
+                                                          +------------------------------------+                   
+                                                          |            IP with JUMBO           |                   
+                                                          +------------------|-----------------+                   
+                                                           -----/            |           \-----                    
+                                                     -----/                  |                 \-----              
+                                         +----------/------+        +--------|--------+        +-----\-----------+ 
+                                         |    SERVER 1     |        |     SERVER 2    |        |     SERVER 3    | 
+                                         |   (20 vcpus)    |        |    (20 vcpus)   |        |    (20 vcpus)   | 
+                                         |                 |        |                 |        |                 | 
+                                         +-----------------+        +-----------------+        +-----------------+ 
+                                                                        |    |                                     
+                                                                        |    |                                     
+                                                                        |    |                                     
+ Contrail HA SETUP VIRTUAL DEPLOYMENT ON 3 PHYSICAL SERVERS             |    |                                     
+ WITH:                                                                  |    |                                     
+                                                                        |    |                                     
+ - 4 computes                                                           |    |                                     
+ - 3 Controllers (Contrail/K8/OS)                                       |    |                                     
+ - 2 VMX Gateway                                                       \      /                                    
+ - 1 Remote VMX PE                                                      \    /                                     
+                                                                         \  /                                      
+ Note that 2 vCPUs are kept free for each Server (18 each)                --                                       
+                                                                                                                   
+                                                                  +------------------+                             
+                                                                  |    SERVER 1      |                             
+                                                                  |                  |                             
+                                                                  |  VMX-1 (4v)      |                             
+                                                                  /  VMX-2 (4v)      \                             
+                                                                /-|  VMX-3 (4v)      |\                            
+                                                       V       /  |                  | \      V                    
+                                                       X      /   |  Compute-1 (6v)  |  \     X                    
+                                                       L    /-    +------------------+   -\   L                    
+                                                       A   /                               \  A                    
+                                                       N  /                                 \ N                    
+                                                        /-                                   \                     
+                                                       /                                      \                    
+                                           +--------------------+                   +--------------------+         
+                                           |     SERVER 2       |                   |      SERVER 3      |         
+                                           |                    |                   |                    |         
+                                           | Controller 1 (7v)  |                   |  Controller 3 (7v) |         
+                                           | Controller 2 (7v)  |                   |                    |         
+                                           |                    |                   |  Compute-3 (6v)    |         
+                                           | Compute-2 (4v)     |                   |  Compute-4 (5v)    |         
+                                           |                    |                   |                    |         
+                                           +--------------------+                   +--------------------+         
+                                                                                                                   
+```
+
+The next section covers the deployment embedded in this  based on Openstack (multicast or massive scale-out scenarios on many computes). It is possible to modify/customize the topology for other requirements (example remote compute).
+
+# Topology Deployment Example
+
+## Contrail HA design with VMX and Remote PE 
 
 This set of ansible  playbooks will deploy a complex topology based on VMX and Contrail/Openstack Virtual Machines and nested virtualisation. The scope of this deployment is mostly for lab/demo purposes where ressources requirements is not crucial. For example,  we deploy on 2 physical servers a set of 16 nodes made up of Contrail/Openstack HA setup(3 VMs) + redundant VMX (2VMs)  + 1 remote PE (1 VM) + 10 computes (10 VMs).
 
