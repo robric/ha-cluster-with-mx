@@ -12,9 +12,17 @@ When deploying on several physical servers, the only assumption to take care of 
 
 ## Concretely 
 
+### Problem statement
+
 Let's start this introduction with a concrete example. An engineer has 3 servers with 20 vcpu each and wants to emulate a Contrail HA cluster with redundant MX GW, a remote PE and a few distinct computes (4) to test/assess things such as load balancing, redundancy, failure testings, convergence, scale-out scenarios, etc. 
 
 Considering the amount of ressources, it is not possible to run such a complex design on a single compute (see the inventory of ressources below), while networking make things complicated to operate at networking level (many virtual networks mapped to VLANs which have stickyness at fabric level).
+
+### Solution 
+
+This set of ansible playbooks will deploy Virtual Machines on computes as well as an overlay topology based on VXLAN between servers to carry virtual networks. This VXLAN overlay topology is based on a HUB and SPOKE design.
+
+In parrallel, a centralised Management network (reachable via the HUB host) permits to reach every VM through a dedicated out of band conncection. The centralisation of Management is brings also great flexibility as when configuring ssh you don't need to wonder to which server a particular workload is running: you will always ssh to the HUB host.
 
 ```
                                                           +------------------------------------+                   
